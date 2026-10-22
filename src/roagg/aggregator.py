@@ -1,16 +1,18 @@
 import sys
-from typing import List
+from typing import List, Optional
 from roagg.helpers.ror import get_names_from_ror
 from roagg.providers.datacite import DataCiteAPI
 from roagg.providers.openaire import OpenAireAPI
 from roagg.providers.openalex import OpenAlexAPI
+from roagg.providers.crossref import CrossRefAPI
 import logging
 from roagg.models.research_output_item import ResearchOutputItem
 import json
 import csv
 from dataclasses import fields
 
-def aggregate(name: List[str] = [], ror: str = "", output: str = "output.csv") -> None:
+def aggregate(name: List[str] = [], ror: str = "", output: str = "output.csv", source: Optional[List[str]] = None) -> None:
+    sources = set(source) if source else {"datacite", "openaire", "openalex", "crossref"}
     if ror:
         ror_name = get_names_from_ror(ror)
         name.extend(ror_name)
@@ -18,27 +20,36 @@ def aggregate(name: List[str] = [], ror: str = "", output: str = "output.csv") -
     # remove duplicates
     name = list(set(name))
 
-    datacite = DataCiteAPI(name=name, ror=ror)
-    url = datacite.api_request_url()
-    # debug print of the query string
-    logging.info("DataCite url:")
-    logging.info(url)
-
-    records = datacite.all()
     research_output_items = []
-    logging.info(f"Checking {len(records)} records...")
-    for record in records:
-        research_output_items.append(datacite.get_record(record))
 
-    openaire = OpenAireAPI(ror=ror, results=research_output_items)
-    openaire_id = openaire.get_openaire_id_from_ror()
-    logging.info(f"OpenAire ID from ROR {ror} : {openaire_id}")
-    openaire.get_records()
+    if "datacite" in sources:
+        datacite = DataCiteAPI(name=name, ror=ror)
+        url = datacite.api_request_url()
+        # debug print of the query string
+        logging.info("DataCite url:")
+        logging.info(url)
 
-    openalex = OpenAlexAPI(ror=ror, results=research_output_items)
-    openalex_id = openalex.get_openalex_id_from_ror()
-    logging.info(f"OpenAlex ID from ROR {ror} : {openalex_id}")
-    openalex.get_records()
+        records = datacite.all()
+        logging.info(f"Checking {len(records)} records...")
+        for record in records:
+            research_output_items.append(datacite.get_record(record))
+
+    if "openaire" in sources:
+        openaire = OpenAireAPI(ror=ror, results=research_output_items)
+        openaire_id = openaire.get_openaire_id_from_ror()
+        logging.info(f"OpenAire ID from ROR {ror} : {openaire_id}")
+        openaire.get_records()
+
+    if "openalex" in sources:
+        openalex = OpenAlexAPI(ror=ror, results=research_output_items)
+        openalex_id = openalex.get_openalex_id_from_ror()
+        logging.info(f"OpenAlex ID from ROR {ror} : {openalex_id}")
+        openalex.get_records()
+
+    if "crossref" in sources:
+        crossreff = CrossRefAPI(ror=ror, results=research_output_items)
+        logging.info(f"CrossRef from ROR {ror}")
+        crossreff.get_records()
 
     logging.info(f"Writing: {output}")
     

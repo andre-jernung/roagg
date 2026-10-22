@@ -56,9 +56,9 @@ def main() -> None:
 
     parser.add_argument(
         "--source",
-        default="api",
-        choices=["api"],
-        help="source for resource aggregation (only api is supported right now)"
+        choices=["datacite", "openaire", "openalex", "crossref"],
+        action='append',
+        help="source for resource aggregation (can be used multiple times) default is all sources"
     )
 
     parser.add_argument(
@@ -82,7 +82,7 @@ def main() -> None:
         names.extend(read_names_from_file(args.name_txt))
 
     try:
-        aggregate(names, args.ror, args.output)
+        aggregate(names, args.ror, args.output, args.source)
     except Exception as e:
         logging.error(f"Aggregation failed: {e}")
         sys.exit(1)
